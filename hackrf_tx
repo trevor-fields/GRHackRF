@@ -1,1 +1,1 @@
-hackrf_transfer -t data_points -R -f 890000000 -s 2000000 -d 325866e621822923 -a 1 -x 30 -l 20 -p 1
+hackrf_transfer -t data_points -R -f 230000000 -s 4000000 -d 325866e621822923 -p 1 -a 1 -x 47

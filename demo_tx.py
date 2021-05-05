@@ -38,8 +38,6 @@ from gnuradio.eng_arg import eng_float, intx
 from gnuradio import eng_notation
 from gnuradio.qtgui import Range, RangeWidget
 from stream_source import stream_source  # grc-generated hier_block
-import osmosdr
-import time
 from gnuradio import qtgui
 
 class demo_tx(gr.top_block, Qt.QWidget):
@@ -83,8 +81,8 @@ class demo_tx(gr.top_block, Qt.QWidget):
         ##################################################
         # Variables
         ##################################################
-        self.sps = sps = 4
-        self.samp_rate = samp_rate = 2e6
+        self.sps = sps = 20
+        self.samp_rate = samp_rate = 4e6
         self.nfilts = nfilts = 25
         self.msg_str = msg_str = "Hello World! \r\n"
         self.rrc_taps = rrc_taps = firdes.root_raised_cosine(nfilts, nfilts, 1.0/float(sps), 0.35, 45*nfilts)
@@ -106,17 +104,6 @@ class demo_tx(gr.top_block, Qt.QWidget):
             a_msg_str=msg_str,
             b_Bpp=Bpp,
         )
-        self.osmosdr_sink_0 = osmosdr.sink(
-            args="numchan=" + str(1) + " " + "hackrf=1,bias_tx=1"
-        )
-        self.osmosdr_sink_0.set_sample_rate(samp_rate)
-        self.osmosdr_sink_0.set_center_freq(890e6, 0)
-        self.osmosdr_sink_0.set_freq_corr(0, 0)
-        self.osmosdr_sink_0.set_gain(30, 0)
-        self.osmosdr_sink_0.set_if_gain(20, 0)
-        self.osmosdr_sink_0.set_bb_gain(20, 0)
-        self.osmosdr_sink_0.set_antenna('', 0)
-        self.osmosdr_sink_0.set_bandwidth(0, 0)
         self.low_pass_filter_0 = filter.fir_filter_ccf(
             1,
             firdes.low_pass(
@@ -150,6 +137,9 @@ class demo_tx(gr.top_block, Qt.QWidget):
         self.blocks_tagged_stream_mux_0 = blocks.tagged_stream_mux(gr.sizeof_char*1, 'packet_len', 0)
         self.blocks_tag_gate_0 = blocks.tag_gate(gr.sizeof_char * 1, False)
         self.blocks_tag_gate_0.set_single_key("")
+        self.blocks_file_sink_0 = blocks.file_sink(gr.sizeof_char*1, '/home/sdr/Documents/GRHackRF/data_points', False)
+        self.blocks_file_sink_0.set_unbuffered(False)
+        self.blocks_complex_to_interleaved_char_0 = blocks.complex_to_interleaved_char(False)
         self.blocks_add_xx_0 = blocks.add_vcc(1)
         self.analog_noise_source_x_0 = analog.noise_source_c(analog.GR_GAUSSIAN, noise, 0)
         self.analog_feedforward_agc_cc_0 = analog.feedforward_agc_cc(1024, 1.55)
@@ -161,7 +151,8 @@ class demo_tx(gr.top_block, Qt.QWidget):
         ##################################################
         self.connect((self.analog_feedforward_agc_cc_0, 0), (self.blocks_add_xx_0, 0))
         self.connect((self.analog_noise_source_x_0, 0), (self.blocks_add_xx_0, 1))
-        self.connect((self.blocks_add_xx_0, 0), (self.osmosdr_sink_0, 0))
+        self.connect((self.blocks_add_xx_0, 0), (self.blocks_complex_to_interleaved_char_0, 0))
+        self.connect((self.blocks_complex_to_interleaved_char_0, 0), (self.blocks_file_sink_0, 0))
         self.connect((self.blocks_tag_gate_0, 0), (self.digital_constellation_modulator_0, 0))
         self.connect((self.blocks_tagged_stream_mux_0, 0), (self.blocks_tag_gate_0, 0))
         self.connect((self.digital_constellation_modulator_0, 0), (self.low_pass_filter_0, 0))
@@ -197,7 +188,6 @@ class demo_tx(gr.top_block, Qt.QWidget):
         self.samp_rate = samp_rate
         self.set_baseband_LO(self.samp_rate/self.sps)
         self.low_pass_filter_0.set_taps(firdes.low_pass(1, self.samp_rate, self.baseband_LO, 1.6E3, firdes.WIN_HAMMING, 6.76))
-        self.osmosdr_sink_0.set_sample_rate(self.samp_rate)
 
     def get_nfilts(self):
         return self.nfilts
